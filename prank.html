@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>System Security</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            overscroll-behavior: none;
+        }
+
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 10000;
+        }
+
+        .warning-screen {
+            background: linear-gradient(45deg, #000, #001100);
+        }
+
+        .encryption-text {
+            font-size: clamp(18px, 6vw, 28px);
+            color: #f00;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #f00;
+            animation: blink 1s infinite;
+        }
+
+        .timer {
+            font-size: clamp(24px, 8vw, 36px);
+            color: #ff0;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .password-screen {
+            background: linear-gradient(45deg, #000, #001100);
+            display: none;
+        }
+
+        #passwordInput {
+            background: #002200;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 15px;
+            font-size: clamp(18px, 6vw, 24px);
+            width: min(200px, 60vw);
+            text-align: center;
+            margin: 20px;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #003300;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 15px 30px;
+            font-size: clamp(16px, 5vw, 20px);
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .rickroll-screen {
+            display: none;
+            background: #000;
+            z-index: 20000;
+        }
+
+        .rickroll-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .rickroll-gif {
+            width: min(300px, 80vw);
+            height: min(300px, 80vw);
+            border: 3px solid #0f0;
+            border-radius: 10px;
+        }
+
+        .rickroll-text {
+            color: #0f0;
+            font-size: clamp(16px, 5vw, 20px);
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .error-message {
+            color: #f00;
+            font-size: clamp(14px, 4vw, 16px);
+            margin-top: 10px;
+            display: none;
+        }
+
+        .attempts {
+            color: #ff0;
+            font-size: clamp(14px, 4vw, 16px);
+            margin-top: 10px;
+        }
+
+        .system-info {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: clamp(12px, 3vw, 14px);
+            color: #888;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        /* Предотвращение скролла */
+        body {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <!-- Экран предупреждения -->
+    <div class="screen warning-screen" id="warningScreen">
+        <div class="encryption-text">⚡ SYSTEM ENCRYPTION ACTIVE ⚡</div>
+        <div style="margin: 10px 0; font-size: clamp(14px, 4vw, 18px);">YOUR DEVICE HAS BEEN ENCRYPTED</div>
+        <div style="margin: 5px 0; font-size: clamp(12px, 3vw, 16px);">ALL PERSONAL DATA IS INACCESSIBLE</div>
+        <div class="timer" id="timer">TIME: 05:00</div>
+        <div style="margin: 10px 0; font-size: clamp(12px, 3vw, 16px);">ENTER DECRYPTION CODE TO RESTORE ACCESS</div>
+        <div class="system-info">System Security v2.1 • Critical Alert</div>
+    </div>
+
+    <!-- Экран с паролем -->
+    <div class="screen password-screen" id="passwordScreen">
+        <div class="encryption-text">🔓 DECRYPTION TERMINAL</div>
+        <div style="margin: 15px 0; font-size: clamp(14px, 4vw, 18px);">ENTER DECRYPTION CODE:</div>
+        <input type="password" id="passwordInput" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+        <button onclick="checkPassword()">DECRYPT SYSTEM</button>
+        <div class="error-message" id="errorMessage">❌ INCORRECT CODE - SYSTEM LOCKDOWN IMMINENT</div>
+        <div class="attempts">ATTEMPTS REMAINING: <span id="attemptsCount">3</span></div>
+        <div class="system-info">Terminal Access • Security Protocol Active</div>
+    </div>
+
+    <!-- Экран с Рикроллом -->
+    <div class="screen rickroll-screen" id="rickrollScreen">
+        <div class="rickroll-content">
+            <img src="https://media.giphy.com/media/Vuw9m5wXviFIQ/giphy.gif" 
+                 alt="Rickroll" class="rickroll-gif">
+            <div class="rickroll-text">
+                <div>🎵 NEVER GONNA GIVE YOU UP 🎵</div>
+                <div>🎵 NEVER GONNA LET YOU DOWN 🎵</div>
+                <div style="margin-top: 10px; color: #ff0;">SYSTEM LOCKDOWN ACTIVE</div>
+                <div style="font-size: clamp(12px, 3vw, 14px); color: #888; margin-top: 5px;">
+                    You've been rickrolled! 😄
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        let attempts = 3;
+        let timeLeft = 300; // 5 минут
+        let rickrollActive = false;
+        let escapeAttempts = 0;
+
+        // МАКСИМАЛЬНАЯ БЛОКИРОВКА ВСЕХ СОБЫТИЙ
+        function blockAllEvents() {
+            const events = [
+                'touchstart', 'touchmove', 'touchend', 'touchcancel',
+                'mousedown', 'mousemove', 'mouseup', 'click',
+                'contextmenu', 'dragstart', 'selectstart',
+                'keydown', 'keyup', 'keypress',
+                'wheel', 'scroll'
+            ];
+
+            events.forEach(eventType => {
+                document.addEventListener(eventType, function(e) {
+                    if (rickrollActive || eventType === 'touchstart' || eventType === 'click') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        
+                        // ВИБРАЦИЯ ПРИ ПОПЫТКЕ КАСАНИЯ
+                        if (navigator.vibrate && (eventType === 'touchstart' || eventType === 'click')) {
+                            navigator.vibrate(100);
+                        }
+                        
+                        return false;
+                    }
+                }, { passive: false, capture: true });
+            });
+        }
+
+        // БЛОКИРОВКА КНОПКИ НАЗАД
+        function blockBackButton() {
+            history.pushState(null, null, location.href);
+            window.onpopstate = function(event) {
+                history.pushState(null, null, location.href);
+                escapeAttempts++;
+                if (escapeAttempts > 2) {
+                    showRickroll();
+                }
+            };
+        }
+
+        // БЛОКИРОВКА ЗАКРЫТИЯ
+        function blockClosing() {
+            window.onbeforeunload = function(e) {
+                e.preventDefault();
+                e.returnValue = '';
+                return 'System security prevents closing this page. Enter decryption code to exit.';
+            };
+        }
+
+        // ПРЕДОТВРАЩЕНИЕ ПЕРЕЗАГРУЗКИ
+        function preventRefresh() {
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                    e.preventDefault();
+                    showRickroll();
+                }
+            });
+        }
+
+        // ЗАПУСК ТАЙМЕРА
+        function startTimer() {
+            const timerElement = document.getElementById('timer');
+            const countdown = setInterval(function() {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerElement.textContent = `TIME: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    showRickroll();
+                }
+                timeLeft--;
+            }, 1000);
+        }
+
+        // ПОКАЗАТЬ ЭКРАН ПАРОЛЯ
+        function showPasswordScreen() {
+            document.getElementById('warningScreen').style.display = 'none';
+            document.getElementById('passwordScreen').style.display = 'flex';
+            
+            // ФОКУС НА ПОЛЕ ВВОДА
+            const passwordInput = document.getElementById('passwordInput');
+            setTimeout(() => {
+                passwordInput.focus();
+            }, 500);
+        }
+
+        // ПРОВЕРКА ПАРОЛЯ
+        function checkPassword() {
+            const password = document.getElementById('passwordInput').value;
+            const errorMessage = document.getElementById('errorMessage');
+            const attemptsCount = document.getElementById('attemptsCount');
+            const passwordInput = document.getElementById('passwordInput');
+            
+            if (password === '1411') {
+                // ПРАВИЛЬНЫЙ ПАРОЛЬ
+                correctPassword();
+            } else {
+                // НЕПРАВИЛЬНЫЙ ПАРОЛЬ
+                attempts--;
+                attemptsCount.textContent = attempts;
+                errorMessage.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.classList.add('shake');
+                
+                // ВИБРАЦИЯ ОШИБКИ
+                if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200]);
+                }
+                
+                setTimeout(() => {
+                    passwordInput.classList.remove('shake');
+                }, 500);
+                
+                if (attempts <= 0) {
+                    setTimeout(showRickroll, 1000);
+                }
+            }
+        }
+
+        // ПРАВИЛЬНЫЙ ПАРОЛЬ
+        function correctPassword() {
+            // ВИБРАЦИЯ УСПЕХА
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100, 50, 200]);
+            }
+            
+            // СООБЩЕНИЕ ОБ УСПЕХЕ
+            alert('✅ SYSTEM RESTORED!\n\nThis was a security simulation.\nPassword: 1411\n\nYou can now close this page.');
+            
+            // РАЗБЛОКИРОВКА
+            rickrollActive = false;
+            window.onbeforeunload = null;
+        }
+
+        // ПОКАЗАТЬ РИКРОЛЛ
+        function showRickroll() {
+            rickrollActive = true;
+            document.getElementById('passwordScreen').style.display = 'none';
+            document.getElementById('rickrollScreen').style.display = 'flex';
+            
+            // АКТИВИРУЕМ МАКСИМАЛЬНУЮ БЛОКИРОВКУ
+            activateMaximumLockdown();
+        }
+
+        // МАКСИМАЛЬНАЯ БЛОКИРОВКА
+        function activateMaximumLockdown() {
+            // ПОСТОЯННОЕ УДЕРЖАНИЕ ИСТОРИИ
+            setInterval(() => {
+                history.pushState(null, null, location.href);
+            }, 100);
+            
+            // ПРЕДОТВРАЩЕНИЕ СМЕНЫ ВКЛАДКИ
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    // Пытаемся вернуть фокус
+                    window.focus();
+                }
+            });
+            
+            // ВИБРАЦИЯ ПРИ АКТИВАЦИИ
+            if (navigator.vibrate) {
+                navigator.vibrate([500, 200, 500]);
+            }
+        }
+
+        // АВТОМАТИЧЕСКИЙ ВВОД ПРИ ФОКУСЕ (для iOS)
+        function setupAutoFocus() {
+            const passwordInput = document.getElementById('passwordInput');
+            passwordInput.addEventListener('focus', function() {
+                setTimeout(() => {
+                    this.click();
+                }, 100);
+            });
+        }
+
+        // ЗАПУСК ВСЕХ СИСТЕМ БЛОКИРОВКИ
+        function initializeSecurity() {
+            blockAllEvents();
+            blockBackButton();
+            blockClosing();
+            preventRefresh();
+            setupAutoFocus();
+            
+            // ЗАПУСК ТАЙМЕРА И ПЕРЕКЛЮЧЕНИЕ ЭКРАНОВ
+            startTimer();
+            setTimeout(showPasswordScreen, 8000);
+        }
+
+        // ЗАПУСК ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+        window.addEventListener('load', initializeSecurity);
+        
+        // ПРЕДОТВРАЩЕНИЕ ЗАКРЫТИЯ ДО ЗАГРУЗКИ
+        window.addEventListener('beforeunload', function(e) {
+            if (!rickrollActive) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+    </script>
+</body>
+</html>
